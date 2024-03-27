@@ -1,0 +1,48 @@
+# acquiring EMG for a duration of 8 Seconds
+import numpy as np
+import matplotlib.pyplot as plt
+import nidaqmx
+import csv
+import pickle
+import time 
+
+time.sleep(2)
+
+def acquire_emg(d, sr):
+    n = d * sr
+    
+    with nidaqmx.Task() as t:
+        t.ai_channels.add_ai_voltage_chan("Dev1/ai1", max_val=10.0, min_val=-10.0)  # Assuming a range of -10V to 10V for EMG
+        t.timing.cfg_samp_clk_timing(rate=sr, samps_per_chan=n)
+        
+        emg_data = t.read(number_of_samples_per_channel=n)
+    
+    return emg_data
+
+def plot_and_save_emg(emg_data, sr, fn):
+    t = np.arange(0, len(emg_data) / sr, 1 / sr)
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(t, emg_data)
+    plt.xlabel('Time (s)')
+    plt.ylabel('EMG (V)')
+    plt.title('EMG Data')
+    plt.grid(True)
+    plt.savefig(fn + '.png')
+    plt.show()
+    
+    with open(fn + '.pickle', 'wb') as f:
+        pickle.dump(emg_data, f)
+    
+    with open(fn + '.csv', 'w', newline='') as csvfile:
+        w = csv.writer(csvfile)
+        w.writerow(['Time (s)', 'EMG (V)'])
+        for ti, eo in zip(t, emg_data):
+            w.writerow([ti, eo])
+
+if __name__ == "__main__":
+    d = 8 # Duration of acquisition in seconds
+    sr = 1000  # Sampling rate in Hz
+    fn = 'EMG6'
+    emg_data = acquire_emg(d, sr)
+    plot_and_save_emg(emg_data, sr, fn)
